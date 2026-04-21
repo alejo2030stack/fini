@@ -16,16 +16,32 @@ let memoriaElyra = {
     recuerdos: []
 };
 
+// 🎤 estado voz
+let vozActiva = false;
+
 // ---------------------
-// 🔊 VOZ
+// 🔴🟢 INDICADOR VISUAL
+// ---------------------
+function actualizarEstadoVoz(color) {
+    const el = document.getElementById("estadoVoz");
+    if (el) el.style.background = color;
+}
+
+// hacer accesible globalmente (para VozMotor)
+window.actualizarEstadoVoz = actualizarEstadoVoz;
+
+// ---------------------
+// 🔊 VOZ (RESPUESTA)
 // ---------------------
 function hablar(texto) {
     const msg = new SpeechSynthesisUtterance(texto);
     msg.lang = "es-ES";
+
     speechSynthesis.cancel();
     speechSynthesis.speak(msg);
 
-    document.getElementById("respuesta").innerText = texto;
+    const resEl = document.getElementById("respuesta");
+    if (resEl) resEl.innerText = texto;
 }
 
 // ---------------------
@@ -55,6 +71,11 @@ async function procesar(texto) {
 
     texto = texto.toLowerCase().trim();
     console.log("🎤", texto);
+
+    const entradaEl = document.getElementById("entrada");
+    if (entradaEl) entradaEl.innerText = texto;
+
+    if (!texto || texto.length < 2) return;
 
     // ---------------------
     // 🧠 ACTIVAR ELYRA
@@ -156,7 +177,6 @@ async function procesar(texto) {
     // ---------------------
     if (estado.modo === "modulo") {
 
-        // 🔥 INVENTARIO (AHORA CON BACKEND)
         if (estado.modulo === "inventario") {
 
             const res = await enviarComando(texto);
@@ -172,9 +192,7 @@ async function procesar(texto) {
             return;
         }
 
-        // 🔥 TAREAS (BASE)
         if (estado.modulo === "tareas") {
-
             hablar("Módulo tareas aún no implementado");
             return;
         }
@@ -182,11 +200,24 @@ async function procesar(texto) {
 }
 
 // ---------------------
-// 🎤 INICIAR VOZ
+// 🎤 CONTROL DE VOZ (TOGGLE)
 // ---------------------
 function iniciarVoz() {
-    VozMotor.iniciar(procesar);
-    hablar("Sistema iniciado");
+
+    if (!vozActiva) {
+        VozMotor.iniciar(procesar);
+        hablar("Sistema iniciado");
+
+        actualizarEstadoVoz("green"); // 🟢
+        vozActiva = true;
+
+    } else {
+        VozMotor.detener();
+        hablar("Sistema detenido");
+
+        actualizarEstadoVoz("red"); // 🔴
+        vozActiva = false;
+    }
 }
 
 window.iniciarVoz = iniciarVoz;

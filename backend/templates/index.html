@@ -2,24 +2,101 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FINI</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 400px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        #estadoVoz {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: red;
+            margin: 15px auto;
+            transition: 0.3s;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            font-size: 18px;
+            border: none;
+            border-radius: 10px;
+            background: #22c55e;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        #entrada {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #94a3b8;
+            min-height: 20px;
+        }
+
+        #respuesta {
+            margin-top: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 24px;
+            }
+
+            button {
+                font-size: 16px;
+                padding: 14px;
+            }
+        }
+    </style>
 </head>
+
 <body>
 
-<h1>🧠 FINI</h1>
+<div class="container">
 
-<div id="estadoVoz" style="
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: red;
-    margin: 10px auto;
-"></div>
+    <h1>🧠 FINI</h1>
 
-<button onclick="iniciarVoz()">🎤 Activar</button>
+    <!-- 🔴🟢 Estado -->
+    <div id="estadoVoz"></div>
 
-<p id="estado">Esperando...</p>
-<p id="respuesta"></p>
+    <!-- 🎤 Botón -->
+    <button onclick="iniciarVoz()">🎤 Activar / Detener</button>
+
+    <!-- 🎤 Entrada -->
+    <p id="entrada"></p>
+
+    <!-- 🤖 Respuesta -->
+    <p id="respuesta"></p>
+
+</div>
 
 <script src="/static/voz/vozMotor.js"></script>
 <script type="module" src="/static/app.js"></script>

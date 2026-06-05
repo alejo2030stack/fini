@@ -1,105 +1,410 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FINI</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FINI</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #080c10;
+  --surface: #0d1117;
+  --border:  rgba(255,255,255,0.07);
+  --green:   #00ff88;
+  --red:     #ff4466;
+  --cyan:    #00d4ff;
+  --amber:   #ffb300;
+  --txt:     #e2e8f0;
+  --txt2:    #4a5568;
+  --font-mono: 'Share Tech Mono', monospace;
+  --font-main: 'Outfit', sans-serif;
+}
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #0f172a;
-            color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
-        .container {
-            width: 100%;
-            max-width: 400px;
-            padding: 20px;
-            text-align: center;
-        }
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--txt);
+  font-family: var(--font-main);
+}
 
-        h1 {
-            margin-bottom: 20px;
-        }
+/* Fondo sutil */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(0,212,255,0.04) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 30% at 80% 100%, rgba(0,255,136,0.03) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
 
-        #estadoVoz {
-            width: 25px;
-            height: 25px;
-            border-radius: 50%;
-            background: red;
-            margin: 15px auto;
-            transition: 0.3s;
-        }
+.app {
+  position: relative; z-index: 1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 48px 24px 40px;
+}
 
-        button {
-            width: 100%;
-            padding: 15px;
-            font-size: 18px;
-            border: none;
-            border-radius: 10px;
-            background: #22c55e;
-            color: white;
-            cursor: pointer;
-        }
+/* ── TOP ── */
+.top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
 
-        button:active {
-            transform: scale(0.97);
-        }
+.logo {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  letter-spacing: 6px;
+  color: var(--txt2);
+  text-transform: uppercase;
+}
 
-        #entrada {
-            margin-top: 20px;
-            font-size: 16px;
-            color: #94a3b8;
-            min-height: 20px;
-        }
+.modo-label {
+  font-size: 0.7rem;
+  letter-spacing: 3px;
+  color: var(--txt2);
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+  min-height: 16px;
+  transition: color 0.3s;
+}
+.modo-label.activo { color: var(--cyan); }
 
-        #respuesta {
-            margin-top: 10px;
-            font-size: 18px;
-            font-weight: bold;
-        }
+/* ── CENTRO — ORB ── */
+.center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  flex: 1;
+  justify-content: center;
+}
 
-        @media (max-width: 480px) {
-            h1 {
-                font-size: 24px;
-            }
+.orb-wrap {
+  position: relative;
+  width: 180px; height: 180px;
+  cursor: pointer;
+  -webkit-user-select: none; user-select: none;
+}
 
-            button {
-                font-size: 16px;
-                padding: 14px;
-            }
-        }
-    </style>
+/* Anillos */
+.ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid transparent;
+}
+.ring-1 {
+  inset: 0;
+  border-color: rgba(0,212,255,0.15);
+  animation: rot1 12s linear infinite;
+}
+.ring-2 {
+  inset: 12px;
+  border-top-color: rgba(0,255,136,0.2);
+  border-bottom-color: rgba(0,255,136,0.05);
+  animation: rot1 8s linear infinite reverse;
+}
+.ring-3 {
+  inset: 24px;
+  border-right-color: rgba(0,212,255,0.15);
+  animation: rot1 16s linear infinite;
+}
+@keyframes rot1 { to { transform: rotate(360deg); } }
+
+/* Orb principal */
+.orb {
+  position: absolute;
+  inset: 36px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.4s ease;
+}
+
+.orb-dot {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--txt2);
+  transition: all 0.3s ease;
+  box-shadow: 0 0 0 0 transparent;
+}
+
+/* Estados del orb */
+.orb-wrap.escuchando .orb {
+  border-color: rgba(0,255,136,0.3);
+  box-shadow: 0 0 40px rgba(0,255,136,0.08);
+}
+.orb-wrap.escuchando .orb-dot {
+  background: var(--green);
+  box-shadow: 0 0 20px rgba(0,255,136,0.6), 0 0 40px rgba(0,255,136,0.3);
+  animation: pulse-green 1.2s ease-in-out infinite;
+}
+.orb-wrap.hablando .orb {
+  border-color: rgba(0,212,255,0.3);
+}
+.orb-wrap.hablando .orb-dot {
+  background: var(--cyan);
+  box-shadow: 0 0 20px rgba(0,212,255,0.6);
+  animation: pulse-cyan 0.6s ease-in-out infinite alternate;
+}
+.orb-wrap.error .orb-dot {
+  background: var(--red);
+  box-shadow: 0 0 16px rgba(255,68,102,0.5);
+}
+
+@keyframes pulse-green {
+  0%,100% { transform: scale(1); opacity:1; }
+  50%      { transform: scale(1.3); opacity:0.8; }
+}
+@keyframes pulse-cyan {
+  from { transform: scale(0.9); }
+  to   { transform: scale(1.2); }
+}
+
+/* Olas de audio */
+.waves {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 24px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.waves.visible { opacity: 1; }
+.wb {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--green);
+  animation: wb 0.7s ease-in-out infinite alternate;
+  opacity: 0.7;
+}
+.wb:nth-child(1){height:5px;  animation-delay:0s;}
+.wb:nth-child(2){height:14px; animation-delay:0.08s;}
+.wb:nth-child(3){height:22px; animation-delay:0.16s;}
+.wb:nth-child(4){height:16px; animation-delay:0.12s;}
+.wb:nth-child(5){height:24px; animation-delay:0.04s;}
+.wb:nth-child(6){height:18px; animation-delay:0.2s;}
+.wb:nth-child(7){height:10px; animation-delay:0.1s;}
+.wb:nth-child(8){height:5px;  animation-delay:0.24s;}
+@keyframes wb { to { transform: scaleY(0.25); } }
+
+/* ── TEXTO ── */
+.texto-wrap {
+  width: 100%;
+  max-width: 340px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.txt-entrada {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--txt2);
+  min-height: 18px;
+  letter-spacing: 0.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.txt-entrada::before { content: '❯ '; color: var(--green); opacity: 0.5; }
+
+.txt-respuesta {
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: var(--txt);
+  line-height: 1.5;
+  min-height: 32px;
+  transition: opacity 0.2s;
+}
+
+/* ── BOTTOM ── */
+.bottom {
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* Botón principal */
+.btn-main {
+  width: 100%;
+  padding: 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  color: var(--txt2);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+.btn-main::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(0,255,136,0.05), rgba(0,212,255,0.05));
+  opacity: 0; transition: opacity 0.3s;
+}
+.btn-main:active::before { opacity: 1; }
+.btn-main.activo {
+  border-color: rgba(0,255,136,0.3);
+  color: var(--green);
+}
+.btn-main:active { transform: scale(0.98); }
+
+/* Indicadores de estado bottom */
+.status-row {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--txt2);
+  letter-spacing: 1px;
+}
+.status-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--txt2);
+  transition: all 0.3s;
+}
+.status-dot.on  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.status-dot.off { background: var(--red); }
+</style>
 </head>
-
 <body>
 
-<div class="container">
+<div class="app">
 
-    <h1>🧠 FINI</h1>
+  <!-- TOP -->
+  <div class="top">
+    <div class="logo">FINI</div>
+    <div class="modo-label" id="modoLabel">Sistema listo</div>
+  </div>
 
-    <!-- 🔴🟢 Estado -->
-    <div id="estadoVoz"></div>
+  <!-- CENTRO -->
+  <div class="center">
 
-    <!-- 🎤 Botón -->
-    <button onclick="iniciarVoz()">🎤 Activar / Detener</button>
+    <!-- Orb táctil -->
+    <div class="orb-wrap" id="orbWrap" onclick="iniciarVoz()">
+      <div class="ring ring-1"></div>
+      <div class="ring ring-2"></div>
+      <div class="ring ring-3"></div>
+      <div class="orb">
+        <div class="orb-dot" id="orbDot"></div>
+      </div>
+    </div>
 
-    <!-- 🎤 Entrada -->
-    <p id="entrada"></p>
+    <!-- Olas -->
+    <div class="waves" id="waves">
+      <div class="wb"></div><div class="wb"></div>
+      <div class="wb"></div><div class="wb"></div>
+      <div class="wb"></div><div class="wb"></div>
+      <div class="wb"></div><div class="wb"></div>
+    </div>
 
-    <!-- 🤖 Respuesta -->
-    <p id="respuesta"></p>
+    <!-- Textos -->
+    <div class="texto-wrap">
+      <div class="txt-entrada" id="entrada"></div>
+      <div class="txt-respuesta" id="respuesta">Toca para comenzar</div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM -->
+  <div class="bottom">
+    <button class="btn-main" id="btnMain" onclick="iniciarVoz()">
+      Activar sistema
+    </button>
+    <div class="status-row">
+      <div class="status-item">
+        <div class="status-dot" id="dotMic"></div>
+        MIC
+      </div>
+      <div class="status-item">
+        <div class="status-dot" id="dotVoz"></div>
+        VOZ
+      </div>
+      <div class="status-item">
+        <div class="status-dot" id="dotApi"></div>
+        API
+      </div>
+    </div>
+  </div>
 
 </div>
 
 <script src="/static/voz/vozMotor.js"></script>
 <script type="module" src="/static/app.js"></script>
+
+<script>
+// ── UI helpers globales ──────────────────────────────────────
+window.setOrb = function(estado) {
+  const wrap = document.getElementById('orbWrap');
+  wrap.className = 'orb-wrap ' + (estado || '');
+};
+
+window.setWaves = function(visible) {
+  document.getElementById('waves').classList.toggle('visible', visible);
+};
+
+window.setModoLabel = function(txt, activo) {
+  const el = document.getElementById('modoLabel');
+  el.textContent = txt;
+  el.className = 'modo-label' + (activo ? ' activo' : '');
+};
+
+window.setDot = function(id, estado) {
+  const d = document.getElementById(id);
+  d.className = 'status-dot ' + estado;
+};
+
+window.actualizarEstadoVoz = function(color) {
+  if (color === 'green') {
+    window.setOrb('escuchando');
+    window.setWaves(true);
+    window.setDot('dotMic', 'on');
+    document.getElementById('btnMain').classList.add('activo');
+    document.getElementById('btnMain').textContent = 'Escuchando...';
+  } else {
+    window.setOrb('');
+    window.setWaves(false);
+    window.setDot('dotMic', 'off');
+  }
+};
+
+window.setHablando = function(hablando) {
+  window.setOrb(hablando ? 'hablando' : 'escuchando');
+  window.setDot('dotVoz', hablando ? 'on' : 'off');
+};
+
+window.setApiCall = function(activo) {
+  window.setDot('dotApi', activo ? 'on' : 'off');
+};
+</script>
 
 </body>
 </html>

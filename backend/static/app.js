@@ -1,222 +1,196 @@
 import { enviarComando } from "./services/api.js";
 import { ejecutarElyra } from "./actions/elyra.js";
-// import { ejecutarTareas } from "./actions/tasks.js";
 
-// ---------------------
-// 🌍 ESTADO GLOBAL
-// ---------------------
+// ── Estado global ────────────────────────────────────────────
 let estado = {
-    modo: "inicio", // inicio | nombre | menu | modulo | elyra
-    nombre: null,
-    modulo: null // inventario | tareas
+    modo:    "inicio",   // inicio | nombre | menu | modulo | elyra
+    nombre:  null,
+    modulo:  null,       // inventario | tareas
 };
 
-// 🧠 memoria Elyra
-let memoriaElyra = {
-    recuerdos: []
-};
+let memoriaElyra = { recuerdos: [] };
+let vozActiva    = false;
 
-// 🎤 estado voz
-let vozActiva = false;
-
-// ---------------------
-// 🔴🟢 INDICADOR VISUAL
-// ---------------------
-function actualizarEstadoVoz(color) {
-    const el = document.getElementById("estadoVoz");
-    if (el) el.style.background = color;
-}
-
-// hacer accesible globalmente (para VozMotor)
-window.actualizarEstadoVoz = actualizarEstadoVoz;
-
-// ---------------------
-// 🔊 VOZ (RESPUESTA)
-// ---------------------
+// ── TTS optimizado ───────────────────────────────────────────
 function hablar(texto) {
-    const msg = new SpeechSynthesisUtterance(texto);
-    msg.lang = "es-ES";
+    if (!texto) return;
+
+    // Mostrar respuesta en UI
+    const el = document.getElementById("respuesta");
+    if (el) el.innerText = texto;
+
+    // Pausar micrófono para evitar que se escuche a sí mismo
+    VozMotor.pausar();
+    if (window.setHablando) window.setHablando(true);
 
     speechSynthesis.cancel();
+
+    const msg  = new SpeechSynthesisUtterance(texto);
+    msg.lang   = "es-ES";
+    msg.rate   = 1.1;    // ligeramente más rápido
+    msg.pitch  = 1.0;
+    msg.volume = 1.0;
+
+    msg.onend = () => {
+        if (window.setHablando) window.setHablando(false);
+        // Reanudar micrófono después de hablar
+        if (vozActiva) VozMotor.reanudar();
+    };
+
+    msg.onerror = () => {
+        if (window.setHablando) window.setHablando(false);
+        if (vozActiva) VozMotor.reanudar();
+    };
+
     speechSynthesis.speak(msg);
-
-    const resEl = document.getElementById("respuesta");
-    if (resEl) resEl.innerText = texto;
 }
 
-// ---------------------
-// 🧠 CONTEXTO GLOBAL
-// ---------------------
+// ── Contexto de ayuda por modo ───────────────────────────────
 function responderContexto() {
-
-    if (estado.modo === "menu") {
-        return "Estás en el menú principal. Puedes ir a inventario o tareas usando tu voz";
-    }
-
-    if (estado.modulo === "inventario") {
-        return "Estás en el módulo de inventario. Puedes agregar productos diciendo por ejemplo 20 galletas, también puedes decir cerrar para ver el resumen o salir para volver al menú";
-    }
-
-    if (estado.modulo === "tareas") {
-        return "Estás en el módulo de tareas. Puedes agregar tareas o salir para volver al menú";
-    }
-
-    return "Estás iniciando el sistema";
+    if (estado.modo === "menu")
+        return `Estás en el menú principal, ${estado.nombre}. Di inventario o tareas.`;
+    if (estado.modulo === "inventario")
+        return "Estás en inventario. Di por ejemplo: veinte galletas. Di cerrar para el resumen o salir para volver.";
+    if (estado.modulo === "tareas")
+        return "Estás en tareas. Puedes agregar tareas o decir salir para volver.";
+    return "Sistema iniciado. Di hola para comenzar.";
 }
 
-// ---------------------
-// 🧠 PROCESADOR CENTRAL
-// ---------------------
+// ── Procesador central ───────────────────────────────────────
 async function procesar(texto) {
-
     texto = texto.toLowerCase().trim();
+    if (!texto || texto.length < 2) return;
+
     console.log("🎤", texto);
 
+    // UI — mostrar entrada
     const entradaEl = document.getElementById("entrada");
     if (entradaEl) entradaEl.innerText = texto;
 
-    if (!texto || texto.length < 2) return;
-
-    // ---------------------
-    // 🧠 ACTIVAR ELYRA
-    // ---------------------
+    // ── Activar Elyra ────────────────────────────────────────
     if (texto.includes("elyra")) {
         estado.modo = "elyra";
-        hablar(`Hola ${estado.nombre || "usuario"}, dime`);
+        hablar(`Dime, ${estado.nombre || "usuario"}`);
+        if (window.setModoLabel) window.setModoLabel("ELYRA", true);
         return;
     }
 
-    // ---------------------
-    // 🧠 MODO ELYRA
-    // ---------------------
+    // ── Modo Elyra ───────────────────────────────────────────
     if (estado.modo === "elyra") {
-
         const res = await ejecutarElyra(texto, memoriaElyra);
 
         if (res.tipo === "navegacion") {
             estado.modulo = res.destino;
-            estado.modo = "modulo";
+            estado.modo   = "modulo";
+            if (window.setModoLabel) window.setModoLabel(res.destino.toUpperCase(), true);
             hablar(res.respuesta);
             return;
         }
-
         if (res.tipo === "memoria") {
             memoriaElyra.recuerdos.push(res.guardar);
             hablar(res.respuesta);
             return;
         }
-
         hablar(res.texto);
         return;
     }
 
-    // ---------------------
-    // 🧠 COMANDO GLOBAL CONTEXTO
-    // ---------------------
-    if (
-        texto.includes("donde estoy") ||
-        texto.includes("ubicacion") ||
-        texto.includes("qué puedo hacer") ||
-        texto.includes("que puedo hacer") ||
-        texto.includes("informacion") ||
-        texto.includes("información") ||
-        texto.includes("ayuda")
-    ) {
+    // ── Comandos globales ────────────────────────────────────
+    if (/donde estoy|ubicacion|qué puedo|que puedo|ayuda|información|informacion/.test(texto)) {
         hablar(responderContexto());
         return;
     }
 
-    // ---------------------
-    // 🚀 INICIO → NOMBRE
-    // ---------------------
+    // ── INICIO ───────────────────────────────────────────────
     if (estado.modo === "inicio") {
         estado.modo = "nombre";
+        if (window.setModoLabel) window.setModoLabel("NOMBRE", false);
         hablar("Hola, ¿cuál es tu nombre?");
         return;
     }
 
+    // ── NOMBRE ───────────────────────────────────────────────
     if (estado.modo === "nombre") {
-        estado.nombre = texto
-            .replace("mi nombre es", "")
-            .replace("soy", "")
+        let nombre = texto
+            .replace(/mi nombre es|me llamo|soy/g, "")
             .trim();
+        nombre = nombre.charAt(0).toUpperCase() + nombre.slice(1);
 
-        estado.modo = "menu";
+        if (nombre.length < 2) {
+            hablar("No escuché tu nombre. ¿Puedes repetirlo?");
+            return;
+        }
 
-        hablar(`Bienvenido ${estado.nombre}. Puedes decir inventario o tareas`);
+        estado.nombre = nombre;
+        estado.modo   = "menu";
+        if (window.setModoLabel) window.setModoLabel("MENÚ", true);
+        hablar(`Bienvenido ${nombre}. Di inventario o tareas.`);
         return;
     }
 
-    // ---------------------
-    // 🧭 MENÚ PRINCIPAL
-    // ---------------------
+    // ── MENÚ ─────────────────────────────────────────────────
     if (estado.modo === "menu") {
-
-        if (texto.includes("inventario")) {
+        if (/inventario|invent/.test(texto)) {
             estado.modulo = "inventario";
-            estado.modo = "modulo";
-
-            hablar("Entrando a inventario");
+            estado.modo   = "modulo";
+            if (window.setModoLabel) window.setModoLabel("INVENTARIO", true);
+            hablar("Inventario abierto. Di por ejemplo: veinte galletas.");
             return;
         }
-
-        if (texto.includes("tarea")) {
+        if (/tarea|tareas/.test(texto)) {
             estado.modulo = "tareas";
-            estado.modo = "modulo";
-
-            hablar("Entrando a tareas");
+            estado.modo   = "modulo";
+            if (window.setModoLabel) window.setModoLabel("TAREAS", true);
+            hablar("Tareas abiertas.");
             return;
         }
-
-        hablar("Puedes decir: ir a inventario o ir a tareas");
+        hablar("Di inventario o tareas.");
         return;
     }
 
-    // ---------------------
-    // 🧩 MODO MÓDULO
-    // ---------------------
+    // ── MÓDULO ───────────────────────────────────────────────
     if (estado.modo === "modulo") {
 
         if (estado.modulo === "inventario") {
-
+            if (window.setApiCall) window.setApiCall(true);
             const res = await enviarComando(texto);
+            if (window.setApiCall) window.setApiCall(false);
 
             hablar(res.respuesta);
 
             if (res.accion === "salir_confirmado") {
                 estado.modulo = null;
-                estado.modo = "menu";
-                hablar("Volviendo al menú principal");
+                estado.modo   = "menu";
+                if (window.setModoLabel) window.setModoLabel("MENÚ", true);
             }
-
             return;
         }
 
         if (estado.modulo === "tareas") {
-            hablar("Módulo tareas aún no implementado");
+            hablar("Módulo tareas en construcción.");
             return;
         }
     }
 }
 
-// ---------------------
-// 🎤 CONTROL DE VOZ (TOGGLE)
-// ---------------------
+// ── Toggle voz ───────────────────────────────────────────────
 function iniciarVoz() {
+    const btn = document.getElementById("btnMain");
 
     if (!vozActiva) {
         VozMotor.iniciar(procesar);
-        hablar("Sistema iniciado");
-
-        actualizarEstadoVoz("green"); // 🟢
         vozActiva = true;
-
+        hablar("Sistema activado");
+        if (btn) { btn.textContent = "Detener sistema"; btn.classList.add("activo"); }
+        if (window.setModoLabel) window.setModoLabel("Activo — di algo", true);
     } else {
         VozMotor.detener();
-        hablar("Sistema detenido");
-
-        actualizarEstadoVoz("red"); // 🔴
         vozActiva = false;
+        speechSynthesis.cancel();
+        if (btn) { btn.textContent = "Activar sistema"; btn.classList.remove("activo"); }
+        if (window.setModoLabel) window.setModoLabel("Sistema detenido", false);
+        if (window.setOrb) window.setOrb('');
+        if (window.setWaves) window.setWaves(false);
     }
 }
 

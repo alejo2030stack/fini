@@ -1,98 +1,102 @@
-import re
 from services.pdf_generator import generar_pdf
 
 def ejecutar_inventario(estado, comando):
     inventario = estado["inventario"]
 
-    # ---------------------
-    # INICIALIZAR SUBMODO
-    # ---------------------
     if "submodo" not in estado:
         estado["submodo"] = None
 
-    # ---------------------
-    # 🔒 CONFIRMACIÓN SALIDA
-    # ---------------------
+    # ── CONFIRMACIÓN SALIDA ──────────────────────────────────
     if estado["submodo"] == "confirmar_salida":
 
         if comando.get("tipo") == "confirmar_si":
             estado["inventario"] = {}
-            estado["submodo"] = None
-
+            estado["submodo"]    = None
             return {
-                "respuesta": "Saliendo de inventario",
+                "respuesta": "Listo, saliendo.",
                 "accion": "salir_confirmado"
             }
 
         if comando.get("tipo") == "confirmar_no":
             estado["submodo"] = None
-            return {
-                "respuesta": "Continuamos en inventario"
-            }
+            return {"respuesta": "Continuamos."}
 
-        return {
-            "respuesta": "Responde sí o no"
-        }
+        return {"respuesta": "Di sí o no."}
 
-    # ---------------------
-    # 📊 CERRAR INVENTARIO (PDF + RESUMEN)
-    # ---------------------
+    # ── CERRAR → PDF + RESUMEN ───────────────────────────────
     if comando.get("tipo") == "cerrar":
 
         if len(inventario) == 0:
-            return {
-                "respuesta": "No hay productos en el inventario"
-            }
+            return {"respuesta": "El inventario está vacío."}
 
-        # 🔥 GENERAR PDF
         ruta_pdf = generar_pdf(inventario)
 
-        # 🧠 RESUMEN MÁS LIMPIO
-        lista = [f"{cantidad} {producto}" for producto, cantidad in inventario.items()]
-        resumen = "Resumen del inventario: " + ", ".join(lista)
+        total_productos = len(inventario)
+        total_unidades  = sum(inventario.values())
 
-        # 🔄 RESET INVENTARIO
+        # Resumen corto para audio
+        lista = [f"{c} {p}" for p, c in list(inventario.items())[:5]]
+        resumen_audio = ", ".join(lista)
+        if total_productos > 5:
+            resumen_audio += f" y {total_productos - 5} productos más"
+
         estado["inventario"] = {}
 
         return {
-            "respuesta": resumen,
+            "respuesta": f"{total_productos} productos, {total_unidades} unidades en total. {resumen_audio}. PDF listo.",
             "pdf": True,
-            "archivo": ruta_pdf  # opcional (por si luego quieres usarlo)
+            "archivo": ruta_pdf
         }
 
-    # ---------------------
-    # 🚪 SALIR
-    # ---------------------
+    # ── SALIR ────────────────────────────────────────────────
     if comando.get("tipo") == "salir":
 
         if len(inventario) > 0:
+            n = len(inventario)
             estado["submodo"] = "confirmar_salida"
             return {
-                "respuesta": "Tienes productos. ¿Seguro que quieres salir?"
+                "respuesta": f"Tienes {n} productos. ¿Salir sin guardar?"
             }
 
         return {
-            "respuesta": "Saliendo de inventario",
+            "respuesta": "Saliendo.",
             "accion": "salir_confirmado"
         }
 
-    # ---------------------
-    # 📦 AGREGAR PRODUCTO
-    # ---------------------
+    # ── LISTAR ───────────────────────────────────────────────
+    if comando.get("tipo") == "listar":
+
+        if len(inventario) == 0:
+            return {"respuesta": "Inventario vacío. Empieza agregando productos."}
+
+        lista = [f"{c} {p}" for p, c in inventario.items()]
+        return {"respuesta": "Tienes: " + ", ".join(lista)}
+
+    # ── AGREGAR PRODUCTO ─────────────────────────────────────
     if comando.get("tipo") == "agregar":
 
         producto = comando["producto"]
         cantidad = comando["cantidad"]
 
-        inventario[producto] = inventario.get(producto, 0) + cantidad
+        anterior = inventario.get(producto, 0)
+        inventario[producto] = anterior + cantidad
+        nuevo_total = inventario[producto]
+
+        # Si ya existía el producto, confirmar acumulado
+        if anterior > 0:
+            return {
+                "respuesta": f"{cantidad} {producto}. Total {nuevo_total}."
+            }
 
         return {
-            "respuesta": f"Agregado {cantidad} {producto}"
+            "respuesta": f"{cantidad} {producto}, listo."
         }
 
-    # ---------------------
-    # ❌ DEFAULT
-    # ---------------------
-    return {
-        "respuesta": "Comando no válido en inventario"
-    }
+    # ── FALLBACK AMIGABLE ────────────────────────────────────
+    texto_original = comando.get("texto_original", "")
+    if texto_original:
+        return {
+            "respuesta": f"No entendí. Di el número y el producto, por ejemplo: veinte galletas."
+        }
+
+    return {"respuesta": "Di el número y el producto."}
